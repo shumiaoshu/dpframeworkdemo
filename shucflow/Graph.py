@@ -28,7 +28,7 @@ class graph():
         self.back_node_seq = self.node_seq[::-1]
         for op_node in self.back_node_seq:
             op_node.compute_grad()
-    def backward(self,lr=0.1):
+    def backward(self,lr=0.001):
         # lr = 0.0001
         for op_node in self.back_node_seq:
             op_node.apply_Grad(lr)
