@@ -10,7 +10,8 @@ from shucflow.util import *
 class FullConnect():
     def __init__(self,inputs,w,model=default_Model):
         self.batch_size = None
-        self.H = inputs.w
+        self.H = inputs.W
+        self.W = w
         self.weight = cp.random.normal(size=(self.H,w),scale=1,loc=0)
         self.bias = cp.random.normal(size=(w),scale=1,loc=0)
 
@@ -38,14 +39,15 @@ class FullConnect():
 
     def compute_grad(self):
         self.dtx[self.parents[0]] = 0
-
+        self.dw = 0
+        self.db = 0
         for child in self.children:
             self.dtx[self.parents[0]] += cp.matmul(child.dtx[self],self.weight.T)
             self.dw += cp.matmul(self.parents[0].value.T,child.dtx[self])
             self.db += cp.sum(child.dtx[self],axis=0)
         return
 
-    def apply_Grad(self,lr):
+    def apply_grad(self,lr):
         self.weight = self.weight - lr * self.dw
         self.bias = self.bias - lr * self.db
         return
@@ -89,7 +91,7 @@ class softmax_cross_entropy():
         # 监督数据是one-hot-vector的情况
         self.dtx[self.parents[0]] = (self.y - self.t) / self.batch_size
         return self.dtx
-    def apply_Grad(self,lr):
+    def apply_grad(self,lr):
         return
 
 class input_node():
@@ -107,14 +109,21 @@ class input_node():
         return self.value
     def compute_grad(self):
         return
-    def apply_Grad(self,lr):
+    def apply_grad(self,lr):
         return
 
 class Relu():
     def __init__(self,inputs,model=default_Model):
         # self.x = inputs.value
+        self.H = inputs.H
+        self.W = inputs.W
+        self.batch_size = inputs.batch_size
         self.parents = [inputs]
         self.children = []
+        if type(inputs) == FullConnect:
+            self.channle = None
+        else:
+            self.channle = inputs.channle
         self.value = None
         self.mask = None
         self.dtx = {}
@@ -135,7 +144,7 @@ class Relu():
             self.dtx[self.parents[0]] += child.dtx[self]
         self.dtx[self.parents[0]][self.mask] = 0
         return self.dtx
-    def apply_Grad(self,lr):
+    def apply_grad(self,lr):
         return
 
 class Conv2d():
@@ -175,9 +184,11 @@ class Conv2d():
 
     def compute_grad(self):
         self.dtx[self.parents[0]] = 0
+        self.dw = 0
+        self.db = 0
         for child in self.children:
             dout = child.dtx[self].transpose(0,2,3,1).reshape(-1,self.FN)
-            self.db += cp.sum(child.dtx[self], axis=0)
+            self.db += cp.sum(dout, axis=0)
             self.dw += cp.matmul(self.col.T, dout)
             self.dtx[self.parents[0]] += cp.matmul(dout, self.col_w.T)
         self.dw = self.dw.transpose(1,0).reshape(self.FN,self.parents[0].channle,self.FH,self.FW)
@@ -186,6 +197,8 @@ class Conv2d():
 
     def apply_grad(self,lr):
         self.weight = self.weight - lr * self.dw
+        bias_shape = cp.shape(self.bias)
+        db_shape = cp.shape(self.db)
         self.bias = self.bias - lr * self.db
         return
 
@@ -236,7 +249,7 @@ class pooling():
         return
 
 class flatten():
-    def __init__(self,inputs,col,model=default_Model):
+    def __init__(self,inputs,model=default_Model):
         self.batch_size = inputs.batch_size
         self.parents = [inputs]
         self.children = []
@@ -246,7 +259,7 @@ class flatten():
             model.op_node_dict[inputs] = [self]
         else:
             model.op_node_dict[inputs].append(self)
-        self.w = inputs.channle * inputs.H * inputs.W
+        self.W = inputs.channle * inputs.H * inputs.W
         self.value = None
         self.dtx = {}
 

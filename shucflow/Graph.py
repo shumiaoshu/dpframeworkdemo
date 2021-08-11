@@ -31,7 +31,7 @@ class graph():
     def backward(self,lr=0.001):
         # lr = 0.0001
         for op_node in self.back_node_seq:
-            op_node.apply_Grad(lr)
+            op_node.apply_grad(lr)
     def __call__(self):
         self.forward()
 default_Model = graph()
