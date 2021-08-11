@@ -8,10 +8,10 @@ t_train = cp.array(t_train)
 x_test = cp.array(x_test)
 t_test = cp.array(t_test)
 
-x = input_node()
-fc1 = FullConnect(inputs=x,raw=784,col=50)
+x = input_node(h=1,w=784,c=1,batch_size=100)
+fc1 = FullConnect(inputs=x,w=50)
 re = Relu(inputs=fc1)
-fc2 = FullConnect(inputs=re,raw=50,col=10)
+fc2 = FullConnect(inputs=re,w=10)
 sce = softmax_cross_entropy(inputs=fc2)
 
 iters_num = 10000
@@ -25,7 +25,7 @@ for i in range(iters_num):
     x.value = x_batch
     sce.t = t_batch
     # print(fc1.batch_size)
-    fc1.forward()
+    # fc1.forward()
     # print(fc1.value)
     default_Model.forward()
     default_Model.compute_grad()
